@@ -1,0 +1,9 @@
+# El proyecto Android, su codigo fuente y sus artefactos se mantienen en local.
+/AndroidCalidadAire/
+
+# Evitar publicar por accidente material de firma o configuracion local.
+*.jks
+*.keystore
+keystore.properties
+local.properties
+
