@@ -144,9 +144,9 @@ no son los pines I2C del SCD41.
 | VCC | 3V3 |
 | GND | GND |
 | CLK | GPIO 10 |
-| MOSI / DI | GPIO 11 |
+| MOSI / DI /SI| GPIO 11 |
 | CS | GPIO 15 |
-| MISO / DO | GPIO 16 |
+| MISO / DO / SO | GPIO 16 |
 
 La pantalla y la microSD comparten CLK y MOSI, pero cada una tiene su propio CS.
 
