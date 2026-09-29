@@ -1,48 +1,87 @@
 # Monitor de calidad del aire con ESP32-S3
 
-Sistema de monitoreo ambiental basado en un ESP32-S3. Mide CO2, temperatura,
-humedad y material particulado; presenta los valores en una pantalla TFT,
-los registra en una microSD y los transmite en tiempo real a una aplicacion
-Android mediante Bluetooth Low Energy (BLE).
+## Objetivo del proyecto
 
-## Contenido publico
+Medir CO2, temperatura, humedad y partículas PM2.5 y PM10 en un espacio
+interior. El sistema muestra las lecturas en el equipo y en una app Android,
+clasifica la ventilación según el CO2 y conserva registros para consultar su
+evolución. La clasificación de ventilación no representa una evaluación
+completa de todos los contaminantes del aire.
 
-Este repositorio publica el codigo fuente del firmware para el ESP32-S3 y una
-APK precompilada de la aplicacion Android:
+## Arquitectura o funcionamiento
 
-- Firmware: [`Calidad_Aire/Calidad_Aire.ino`](Calidad_Aire/Calidad_Aire.ino).
-- Aplicacion Android 1.2: [`apk/CalidadAire-v1.2.apk`](apk/CalidadAire-v1.2.apk).
+El SCD41 entrega CO2, temperatura y humedad al ESP32-S3 por I²C, mientras que
+el Plantower PMSx003/PMS5003 envía las partículas por UART. El microcontrolador
+muestra las mediciones en una TFT GC9A01, guarda resúmenes en una microSD y
+notifica las lecturas a la app Android mediante Bluetooth Low Energy (BLE). La
+app conserva su propio historial en SQLite para mostrar gráficos y reportes
+sin depender de la tarjeta del equipo.
 
-El codigo fuente de la aplicacion Android no forma parte de este repositorio.
-La aplicacion se distribuye unicamente como APK para instalarla y usarla con
-este proyecto; no se autoriza su modificacion.
+## Flujo de funcionamiento
 
-## Cambios recientes
+Al encenderse, el firmware inicia la pantalla, la microSD y los sensores. El
+SCD41 produce una medición aproximadamente cada cinco segundos; con ella se
+actualizan la TFT y los canales BLE de ambiente y partículas. Cada 30 segundos
+se escribe en la microSD un resumen CSV de las muestras. Al conectarse, la app
+envía la hora del teléfono al ESP32-S3 y registra una muestra local cada 30
+segundos mientras permanece abierta y conectada. Desde ese historial ofrece
+reportes de 24 horas, 7 días y 30 días, incluso después de desconectarse. El
+equipo continúa registrando en la microSD cuando la app no está conectada.
 
-La version 1.2 de la aplicacion Android amplia el historial
-local y agrega exportacion CSV. Tambien conserva el diagnostico operativo y la
-compatibilidad con los canales de medicion existentes:
+## Desarrollo e implementación
 
-- El historial de reportes se guarda durante 30 dias en SQLite y puede
-  consultarse sin conexion al ESP32.
-- Al volver a abrir la app, los graficos principales recuperan desde SQLite
-  las dos horas previas a la ultima muestra local e indican su fecha y hora.
-- Los periodos de 24 horas, 7 dias y 30 dias pueden exportarse como CSV desde
-  el selector de archivos de Android, sin permisos de almacenamiento.
-- La interfaz Android organiza el monitor en tiempo real, el reporte ambiental
-  y el diagnostico del equipo en pantallas adaptadas para telefono y tablet.
-- Un nuevo canal BLE opcional informa cada dos segundos el estado del SCD41,
-  Plantower y microSD.
-- El firmware ya no usa Wi-Fi, NTP ni HTTPS, ni indexa la microSD durante el
-  arranque; la hora llega exclusivamente desde Android por BLE.
-- El SCD41 se consulta sin bloquear el `loop()` y cuenta con recuperacion
-  automatica ante esperas prolongadas o errores I2C consecutivos.
-- La microSD solo se considera `Grabando` tras confirmar una escritura y
-  vaciarla correctamente.
-- Los graficos permiten seleccionar muestras por toque, arrastre, teclado o
-  servicios de accesibilidad para consultar su hora, valor y unidad.
-- El montaje y las pantallas principales de la app quedan documentados con
-  fotografias reales en la galeria del proyecto.
+El firmware Arduino en C++ integra lectura I²C y UART, visualización SPI,
+almacenamiento CSV y un servicio BLE para mediciones, comandos de hora y
+diagnóstico. La app Android 1.2 presenta un monitor en vivo, un reporte
+ambiental y el estado del equipo. Su historial local conserva hasta 30 días y
+permite exportar el período elegido a CSV mediante el selector de archivos de
+Android. El firmware actual recibe la hora por BLE; no requiere Wi-Fi, NTP ni
+HTTPS y no indexa la microSD al arrancar.
+
+## Desafíos técnicos
+
+El SCD41 se consulta sin detener el ciclo principal y reinicia su medición
+periódica cuando deja de entregar datos o acumula errores I²C. El firmware
+verifica las tramas del Plantower y la vigencia de su última lectura. También
+comprueba la escritura en la microSD antes de informar que está grabando. La
+app mantiene la conexión BLE al girar la pantalla y distingue el historial
+local del respaldo CSV de la tarjeta: no importa automáticamente los registros
+guardados por el equipo mientras estuvo desconectada.
+
+## Resultados
+
+El repositorio publica el firmware del ESP32-S3 y una APK instalable de la app
+Android 1.2. El prototipo ofrece mediciones en pantalla y por BLE, respaldo
+en microSD, diagnóstico de sensores y almacenamiento, gráficos históricos y
+exportación CSV. Las fotografías siguientes muestran el montaje y las
+pantallas de la app. El código fuente de Android no forma parte de este
+repositorio; la APK se distribuye para instalarla y usarla con este proyecto,
+sin autorización para modificarla.
+
+## Hardware utilizado
+
+- ESP32-S3.
+- Sensor Sensirion SCD41 conectado por I²C.
+- Sensor de partículas Plantower PMSx003/PMS5003 conectado por UART.
+- Pantalla TFT redonda GC9A01 de 1,28 pulgadas y 240 × 240 píxeles.
+- Módulo lector de microSD compatible con 3,3 V y tarjeta microSD FAT32.
+- Módulo de alimentación para protoboard configurado a 3,3 V.
+- Teléfono o tablet con Android 6.0 o posterior y Bluetooth Low Energy.
+
+## Software y tecnologías
+
+- Firmware Arduino en C++ para ESP32-S3.
+- Bibliotecas Sensirion I2C SCD4x, Adafruit GFX y Adafruit GC9A01A.
+- Bibliotecas SD y BLE del paquete de placas ESP32.
+- App Android distribuida como APK; historial local SQLite y exportación CSV.
+- Arduino IDE para compilar y cargar el firmware.
+
+## Recursos relacionados
+
+- [Código del proyecto en GitHub](https://github.com/ffelipev2/CalidadAireEsp32S3Publico).
+- [Documentación, conexiones e instalación](https://github.com/ffelipev2/CalidadAireEsp32S3Publico/blob/main/README.md).
+- [Firmware del ESP32-S3](https://github.com/ffelipev2/CalidadAireEsp32S3Publico/blob/main/Calidad_Aire/Calidad_Aire.ino).
+- [APK de la app Android 1.2](https://github.com/ffelipev2/CalidadAireEsp32S3Publico/blob/main/apk/CalidadAire-v1.2.apk).
 
 ## Galeria del proyecto
 
@@ -71,22 +110,6 @@ ventilacion.
 
 Las imagenes se pueden abrir para verlas a tamano completo.
 
-## Funcionalidades
-
-- Medicion de CO2, temperatura y humedad con un Sensirion SCD41.
-- Medicion de PM2.5 y PM10 con un Plantower PMSx003/PMS5003.
-- Visualizacion local en pantalla redonda GC9A01 de 240 x 240 pixeles.
-- Registro CSV de respaldo en una tarjeta microSD, sin leerla para reportes.
-- Transmision de todas las mediciones mediante BLE.
-- Aplicacion Android con indicadores visuales y actualizacion en tiempo real.
-- Historial SQLite persistente en el telefono con retencion automatica de 30 dias.
-- Reportes de 24 horas, 7 dias o 30 dias calculados desde el historial local.
-- Exportacion CSV del periodo seleccionado.
-- Sincronizacion del reloj del ESP32 con la hora del telefono mediante BLE.
-- Conexion BLE conservada al girar la pantalla del telefono.
-- Panel de diagnostico en vivo para sensores y almacenamiento.
-- Inicializacion del SCD41 con estados visibles y limite de espera I2C.
-
 ## Estructura del proyecto
 
 ```text
@@ -100,16 +123,6 @@ CalidadAireEsp32S3Publico/
 |- docs/images/                                Fotografias del montaje y la app
 `- README.md
 ```
-
-## Componentes
-
-- ESP32-S3.
-- Sensor Sensirion SCD41.
-- Sensor Plantower PMSx003/PMS5003.
-- Pantalla TFT redonda GC9A01, 1.28 pulgadas, 240 x 240.
-- Modulo lector de microSD compatible con 3.3 V.
-- Modulo de alimentacion para protoboard configurado para entregar 3.3 V.
-- Tarjeta microSD formateada en FAT32.
 
 ## Conexiones
 
